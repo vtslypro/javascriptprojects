@@ -1,0 +1,24 @@
+{
+  "name": "forgesampleapp",
+  "version": "1.0.0",
+  "description": "Test App for forge and hfdm",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://git.autodesk.com/zahido/forgeSampleApp.git"
+  },
+  "keywords": [
+    "Forge",
+    "HFDM",
+    "NODE"
+  ],
+  "author": "Owais Zahid",
+  "license": "ISC",
+  "dependencies": {
+    "@adsk/forge-hfdm": "0.0.42",
+    "express": "^4.16.2"
+  }
+}

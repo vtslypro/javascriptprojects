@@ -1,0 +1,143 @@
+<html>
+	<head>
+	</head>
+	<body>
+		<div>
+			<h2> HFDM Client <h2>
+			<h3> Options </h3>
+			<div style='padding-left: 15px;'>
+				<div>
+					<input type='radio' id='createOpt' name='mode' value='CREATE' onclick='onCreateOptionClick()'>
+					<label for='createOpt'>Create Workspace</label>
+				</div>
+
+				<div>
+					<input type='radio' id='connectOpt' name='mode' value='CONNECT' onclick='onConnectOptionClick()'>
+					<label for='connectOpt'>Connect Workspace</label>
+					<div style='padding-left:45px;'>
+						<label>Enter Branch URN : </label><input type='text' id='branchUrn' disabled=true>
+						</div>
+				</div>
+			</div>
+			<div>
+				<button id='connectBtn' onclick='connectHFDM()' disabled=true>Connect</button>
+			</div>
+			<div class='connect'>
+				<h3 id='currentBranchUrn'></h3>
+			</div>
+			<div class='interface'>
+				Property Name : <input type='text' id='propertyName'><br>
+				Property Value: <input type='text' id='propertyValue'><br>
+				<button id='commitBtn' onclick='commitHFDM()'>Commit</button>
+			</div>
+			<div class='log'>
+				Status Log : <textarea id='log'></textarea>
+			</div>
+		</div>
+		<script type='text/javascript' src='forge-hfdm.js'></script>
+		<script src='https://code.jquery.com/jquery-3.2.1.min.js' integrity='sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=' crossorigin='anonymous'></script>
+		<script>
+			var params = {},
+			queryString = location.hash.substring(1),
+			regex = /([^&=]+)=([^&]*)/g,
+			m;
+			while (m = regex.exec(queryString)) {
+				params[m[1]] = m[2];
+			}
+
+			var accessToken = params['access_token'];
+
+			var HFDM_SDK = window.Forge.HFDM;
+
+			// Instantiate HFDM object
+			var hfdm = new HFDM_SDK.HFDM();
+
+			window.addEventListener('beforeunload', function() {
+				if (hfdm) {
+					hfdm.disconnect();
+				}
+			});
+
+			// Create an empty workspace.
+			var workspace = hfdm.createWorkspace();
+
+			// Connect to the backend server
+			hfdm.connect({
+				serverUrl: 'https://dna.hfdm.autodesk.com'//,
+				// getBearerToken: function (cb) {
+				// 	cb(null, accessToken);
+				// }
+			}).then(function(){
+				console.log('Successfully connected to HFDM!');
+				$('#connectBtn').prop('disabled', false);
+			}).catch(function(error){
+				console.error('Failed to connect', error);
+			});
+
+			function onConnectOptionClick() {
+				$('#branchUrn').prop('disabled', false);
+			}
+
+			function onCreateOptionClick() {
+				$('#branchUrn').prop('disabled', true);
+			}
+
+			function connectHFDM() {
+				var isCreate = $('#createOpt').is(':checked');
+				var URN = !isCreate && $('#branchUrn').val();
+				var branchPromise = null;
+				if (isCreate) {
+					branchPromise = workspace.initialize().then(function () {
+						$('#currentBranchUrn').html(workspace.getActiveUrn());
+					});
+					// Add permision here.
+				} else {
+					$('#currentBranchUrn').html(URN);
+					branchPromise = workspace.initialize({urn: URN})
+				}
+
+				branchPromise.then(function() {
+					console.log('Successfully initialized the Workspace');
+					// PrettyPrint generates a human-readable representation of the
+					// workspace and all of its objects
+					workspace.prettyPrint();
+
+					// Listen for any modifications on the myProperty path
+					workspace.on('modified', function(changeSet, operation) {
+					  var logEntry = 'Change has been made with :' + changeSet;
+					  $('#log').val($('#log').val() + '\n' + logEntry);
+					});
+				}).catch(function(error){
+					console.error('Failed to initialize Workspace', error);
+				});
+			}
+
+			function addProperty(name, value) {
+				// Instantiate property of type String
+				var stringProperty = HFDM_SDK.PropertyFactory.create('String');
+				// Set it’s value to 'Hello World!'
+				stringProperty.setValue(value);
+
+				// Add it to the workspace under the id 'myProperty'
+				workspace.insert(name, stringProperty);
+			}
+
+			function commitHFDM() {
+				if ($('#propertyName').val() && $('#propertyValue').val()) {
+					addProperty($('#propertyName').val(), $('#propertyValue').val());
+					commitWork($('#propertyName').val(), $('#propertyValue').val());
+				}
+			}
+			function commitWork(commitMessage) {
+				workspace.commit({ metadata: { name: commitMessage } })
+					.then(function(commitNode) {
+						console.log('Successfully written data into HFDM!');
+						console.log('The Workspace contains one property');
+						workspace.prettyPrint();
+					}).catch(function(error){
+						console.error('Failed to write data into HFDM', error);
+					});
+			}
+		</script>
+	</body>
+</html>
